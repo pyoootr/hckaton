@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Tinjau - Pothole Reporting</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+        }
+
+        .header {
+            padding: 1rem 2rem;
+            background: rgb(32, 162, 202);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .header h1 {
+            color: #ffffff;
+            font-size: 1.7rem;
+            font-weight: 600;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 60px);
+        }
+
+        #map {
+            height: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .sidebar {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .primary-btn {
+            background: #4904c9;
+            color: white;
+        }
+
+        .secondary-btn {
+            background: #4904c9(0 94% 6%);
+            color: #333;
+        }
+
+        .primary-btn:hover {
+            background: #0066dd;
+        }
+
+        .secondary-btn:hover {
+            background: #0066dd;
+        }
+
+        .severity-low:hover {
+            background: #0066dd;
+        }
+
+        .severity-medium:hover {
+            background: #0066dd;
+        }
+
+        .severity-high:hover {
+            background: #0066dd;
+        }
+
+        .report-form {
+            background: #f8f8f8;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .severity-options {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: vertical;
+            font-size: 0.9rem;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .submit-btn {
+            background: #34c759;
+            color: white;
+        }
+
+        .cancel-btn {
+            background: #ff3b30;
+            color: white;
+        }
+
+        .recent-reports h2 {
+            font-size: 1.1rem;
+            color: #333;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .report-card {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .report-card:last-child {
+            border-bottom: none;
+        }
+
+        .severity-btn {
+    padding: 0.5rem 0.7rem;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.severity-low {
+    background: #fff9eb;
+    color: #ffcc00;
+}
+
+.severity-medium {
+    background: #fff5eb;
+    color: #ff9500;
+}
+
+.severity-high {
+    background: #ffebeb;
+    color: #ff3b30;
+}
+
+.severity-btn:hover {
+    background: #88948d; /* Change this to your desired hover background */
+}
+
+        .severity-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .severity-high {
+            background: #ffebeb;
+            color: #ff3b30;
+        }
+
+        .severity-medium {
+            background: #fff5eb;
+            color: #ff9500;
+        }
+
+        .severity-low {
+            background: #fff9eb;
+            color: #ffcc00;
+        }
+
+        .report-timestamp {
+            color: #999;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .report-description {
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">    
+        <h1>📍 Smart Tinjau</h1>
+    </div>
+
+    <div class="container">
+        <div id="map"></div>
+
+        <div class="sidebar">
+            <div class="controls">
+                <button class="primary-btn" onclick="startReporting()">Report Pothole</button>
+                <button class="secondary-btn" onclick="centerMap()">Center Map</button>
+            </div>
+
+            <div id="reportForm" class="report-form">
+                <div class="form-group">
+                    <label>Tingkat Kerusakan</label>
+                    <div class="severity-options">
+                        <button class="severity-btn" onclick="setSeverity('Low')">Sedikit</button>
+                        <button class="severity-btn" onclick="setSeverity('Medium')">Sedang</button>
+                        <button class="severity-btn" onclick="setSeverity('High')">Parah</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Deskripsikan</label>
+                    <textarea id="description" placeholder="Deskripsikan Lubang Tersebut..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="submit-btn" onclick="submitReport()">Submit</button>
+                    <button class="cancel-btn" onclick="cancelReport()">Cancel</button>
+                </div>
+            </div>
+
+            <div class="recent-reports">
+                <h2>Recent Reports</h2>
+                <div id="recentReports"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let marker;
+        let isReporting = false;
+        let selectedSeverity = null;
+        let reports = [];
+
+        function initMap() {
+            map = L.map('map').setView([1.5535, 110.3593], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const userLat = position.coords.latitude;
+                    const userLon = position.coords.longitude;
+                    map.setView([userLat, userLon], 13);
+                });
+            }
+            map.on('click', function(e) {
+                if (isReporting) {
+                    if (marker) {
+                        marker.setLatLng(e.latlng);
+                    } else {
+                        marker = L.marker(e.latlng).addTo(map);
+                    }
+                    document.getElementById('reportForm').style.display = 'block';
+                }
+            });
+        }
+
+        function startReporting() {
+            isReporting = true;
+            map.getContainer().style.cursor = 'crosshair';
+            alert('Klik pada peta untuk meletakan penanda jalan berlubang');
+        }
+
+        function setSeverity(severity) {
+            selectedSeverity = severity;
+            document.querySelectorAll('.severity-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === severity) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        function submitReport() {
+            if (!marker || !selectedSeverity) {
+                alert('Silahkan pilih lokasi dan tingkat kerusakan');
+                return;
+            }
+
+            const description = document.getElementById('description').value;
+            const report = {
+                location: marker.getLatLng(),
+                severity: selectedSeverity,
+                description: description,
+                timestamp: new Date().toLocaleString()
+            };
+
+            const color = selectedSeverity === 'High' ? '#ff3b30' : 
+                         selectedSeverity === 'Medium' ? '#ff9500' : '#ffcc00';
+            
+            L.circle(report.location, {
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.6,
+                radius: 5  // Reduced circle size to 5 meters
+            }).addTo(map);
+
+            reports.unshift(report);
+            updateRecentReports();
+            cancelReport();
+        }
+
+        function cancelReport() {
+            if (marker) {
+                map.removeLayer(marker);
+                marker = null;
+            }
+            isReporting = false;
+            selectedSeverity = null;
+            document.getElementById('reportForm').style.display = 'none';
+            document.getElementById('description').value = '';
+            document.querySelectorAll('.severity-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            map.getContainer().style.cursor = '';
+        }
+
+        function centerMap() {
+            map.setView([1.5535, 110.3593], 13);
+        }
+
+        function updateRecentReports() {
+            const recentReportsDiv = document.getElementById('recentReports');
+            recentReportsDiv.innerHTML = reports.map(report => `
+                <div class="report-card">
+                    <div class="severity-badge severity-${report.severity.toLowerCase()}">
+                        ${report.severity} Severity
+                    </div>
+                    <div class="report-timestamp">${report.timestamp}</div>
+                    <div class="report-description">${report.description}</div>
+                </div>
+            `).join('');
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
